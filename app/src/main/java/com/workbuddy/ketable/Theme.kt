@@ -78,8 +78,10 @@ data class KtColors(
     /** Dock / 页头玻璃蒙层：暗 rgba(20,20,26,.50) / 亮 rgba(255,255,255,.70) */
     // V3：深色 Dock 蒙层从 0x2A（16.5% 白）降到 0x1F（12% 白）。
     // 蒙层越厚，背景采样越看不见，玻璃越像实色板。
-    val dockTint: Color get() = if (dark) Color(0x1FFFFFFF) else Color(0xB3FFFFFF)
-    val glassTint: Color get() = if (dark) Color(0x14FFFFFF) else Color(0x8CFFFFFF)
+    // V4.9：浅色 Dock/灵动岛看着像白药片，蒙层再调薄——亮从 70% 白降到 50%，
+    // Regular 玻璃蒙层从 55% 白降到 45%，让极光透进来。
+    val dockTint: Color get() = if (dark) Color(0x1FFFFFFF) else Color(0x80FFFFFF)
+    val glassTint: Color get() = if (dark) Color(0x14FFFFFF) else Color(0x73FFFFFF)
     val glassBorder: Color get() = separator
     val mask: Color get() = Color(0x8C000000)
 }
