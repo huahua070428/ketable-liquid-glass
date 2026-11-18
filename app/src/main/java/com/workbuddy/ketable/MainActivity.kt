@@ -567,8 +567,10 @@ fun Dock(selected: Route, onSelect: (Route) -> Unit, modifier: Modifier = Modifi
 
         androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
             val tabW: Dp = maxWidth / TABS.size
-            val bubbleW = 64.dp
-            val bubbleH = 52.dp
+            // V5：巨型透镜泡 92x76，顶出 Dock 10dp（参考图：泡泡比底栏高出一截）。
+            // 泡泡中心仍对准当前 tab 的槽位中心。
+            val bubbleW = 92.dp
+            val bubbleH = 76.dp
             val target = (tabW * idx + (tabW - bubbleW) / 2).coerceIn(
                 0.dp, (maxWidth - bubbleW).coerceAtLeast(0.dp)
             )
@@ -578,22 +580,42 @@ fun Dock(selected: Route, onSelect: (Route) -> Unit, modifier: Modifier = Modifi
                 label = "dockBubble"
             )
 
-            // 选中：凸透镜玻璃泡（唯一 Lens 级，每屏 1 个）
+            // 选中：凸透镜玻璃泡（唯一 Lens 级，每屏 1 个）。
+            // 选中的图标和文字画进泡泡里放大显示；Row 里对应的那一份用透明占位，
+            // 位置不变，只是看不见——这样透镜里放大的才是图标本身。
+            val (selLabel, selIcon) = TABS[idx].second
             Box(
                 Modifier
-                    .offset(x = x, y = (DOCK_H.dp - bubbleH) / 2)
+                    .offset(x = x, y = (-10).dp)
                     .graphicsLayer {
                         scaleX = 1f + 0.10f * squash.value
                         scaleY = 1f - 0.05f * squash.value
                     }
             ) {
-                // V3：玻璃泡从 CircleShape（64x52 的椭圆）改成 26dp 胶囊。
-                // iOS 26 的选中泡是标准胶囊，椭圆会让 Kyant 的折射 SDF 算歪，
-                // 边缘一侧弯得多、一侧弯得少。
                 DockGlassBubble(
                     modifier = Modifier.size(bubbleW, bubbleH),
-                    shape = RoundedCornerShape(26.dp)
-                )
+                    shape = RoundedCornerShape(30.dp)
+                ) {
+                    Column(
+                        Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            selIcon,
+                            contentDescription = selLabel,
+                            modifier = Modifier.size(28.dp),
+                            tint = colors.accent
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            selLabel,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accent
+                        )
+                    }
+                }
             }
 
             Row(Modifier.fillMaxSize()) {
@@ -604,6 +626,7 @@ fun Dock(selected: Route, onSelect: (Route) -> Unit, modifier: Modifier = Modifi
                         Modifier
                             .width(tabW)
                             .fillMaxSize()
+                            .graphicsLayer { alpha = if (on) 0f else 1f }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
@@ -638,7 +661,7 @@ private fun AddFab(modifier: Modifier = Modifier, onClick: () -> Unit) {
     GlassSurface(
         tier = GlassTier.Lens,
         shape = CircleShape,
-        magnification = 1.14f,
+        magnification = 1.22f,
         modifier = modifier.size(56.dp)
     ) {
         Box(
