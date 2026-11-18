@@ -31,8 +31,9 @@ import androidx.compose.ui.unit.sp
  *      系统级 chrome（Dock、悬浮控件）；卡片一律中性表面色，不自带材质。
  *  二、中性环境：背景永远中性色，禁止彩色光斑 / 氛围渐变 / 彩雾。
  *      色彩只属于内容（课程色、圆点、进度、开关），小剂量高纯度。
- *      【V4 例外，2026-11-18 用户明确要求浅色果味重构：今日页背景允许
- *      彩色柔光极光，因为液态玻璃必须有颜色可折才显形；其余页仍中性。】
+ *      【V4 例外，2026-11-18 用户明确要求浅色果味重构：背景允许
+ *      彩色柔光极光，因为液态玻璃必须有颜色可折才显形。V4.14 推广到
+ *      全部 5 个 tab，深色用同一套颜色压暗；二级页仍锁纯色。】
  *  三、排版驱动层级：层级只靠字号 / 字重 / 留白，禁止描边、光晕、阴影堆层级。
  *      【V4 例外：今日页 Hero 卡允许一道柔和投影做分离，其余不变。】
  *  四、每页认一个师父：今日→iOS 健身，设置→iOS 设置，课表→iOS 日历，Dock→iOS 26 底栏。
@@ -78,10 +79,10 @@ data class KtColors(
     /** Dock / 页头玻璃蒙层：暗 rgba(20,20,26,.50) / 亮 rgba(255,255,255,.70) */
     // V3：深色 Dock 蒙层从 0x2A（16.5% 白）降到 0x1F（12% 白）。
     // 蒙层越厚，背景采样越看不见，玻璃越像实色板。
-    // V4.9：浅色 Dock/灵动岛看着像白药片，蒙层再调薄——亮从 70% 白降到 50%，
-    // Regular 玻璃蒙层从 55% 白降到 45%，让极光透进来。
-    val dockTint: Color get() = if (dark) Color(0x1FFFFFFF) else Color(0x80FFFFFF)
-    val glassTint: Color get() = if (dark) Color(0x14FFFFFF) else Color(0x73FFFFFF)
+    // V4.14：浅色 Dock/灵动岛蒙层再调薄——亮从 50% 白降到 35%，
+    // 极光透进来更多，水滴后面有颜色可折。
+    val dockTint: Color get() = if (dark) Color(0x1FFFFFFF) else Color(0x59FFFFFF)
+    val glassTint: Color get() = if (dark) Color(0x14FFFFFF) else Color(0x59FFFFFF)
     val glassBorder: Color get() = separator
     val mask: Color get() = Color(0x8C000000)
 }
