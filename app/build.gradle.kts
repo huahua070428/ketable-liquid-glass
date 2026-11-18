@@ -12,8 +12,24 @@ android {
         applicationId = "com.workbuddy.ketable"
         minSdk = 33
         targetSdk = 35
-        versionCode = 546
-        versionName = "5.4.6test"
+        versionCode = 547
+        versionName = "5.4.7test"
+    }
+
+    // 正式签名：GitHub Actions 用 Secrets 里的 KEYSTORE_BASE64 解出 keystore 再签，
+    // 这样每次编译的签名都一样，手机才能正常覆盖安装。
+    // 本地没有 KEYSTORE_PATH 时退回 debug 签名。
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                storeType = "PKCS12"
+            }
+        }
     }
 
     buildTypes {
@@ -27,8 +43,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Demo 直接用 debug 签名,免去生成正式 keystore
-            signingConfig = signingConfigs.getByName("debug")
+            // 有正式 keystore 就用它签，没有就用 debug 签名
+            signingConfig = if (System.getenv("KEYSTORE_PATH") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
