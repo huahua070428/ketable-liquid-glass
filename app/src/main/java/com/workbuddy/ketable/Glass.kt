@@ -66,8 +66,8 @@ enum class GlassTier { Lens, Regular }
  */
 object LiquidGlassV3 {
     val lensBlur = 16.dp
-    val lensRefractionHeight = 34.dp
-    val lensRefractionAmount = 46.dp
+    val lensRefractionHeight = 38.dp
+    val lensRefractionAmount = 56.dp
     val regularBlur = 20.dp
     const val lensMagnification = 1.12f
     const val lensTintAlphaDark = 0.16f
@@ -194,13 +194,11 @@ fun GlassSurface(
             when {
                 // 完整：AGSL 折射 + 深度 + 色散（最挑 GPU，等级掉到 1 就不用它）
                 tier == GlassTier.Lens && level >= 2 -> {
-                    // V3 · 贴近 iOS 26：模糊翻倍，折射带加深加宽。
-                    // iOS 的玻璃感主要来自边缘那一圈“把背景拽弯”的折射，
-                    // 之前 refractionHeight 16 / Amount 22 太浅，边缘几乎看不出弯曲。
+                    // V4.9：折射再加深加宽（34/46 -> 38/56），边缘弯曲要更明显。
                     blur(16.dp.toPx())
                     lens(
-                        refractionHeight = 34.dp.toPx(),
-                        refractionAmount = 46.dp.toPx(),
+                        refractionHeight = 38.dp.toPx(),
+                        refractionAmount = 56.dp.toPx(),
                         depthEffect = true,
                         chromaticAberration = true
                     )
@@ -253,14 +251,12 @@ fun GlassSurface(
                 effects = effects,
                 highlight = if (tier == GlassTier.Lens) {
                     {
-                        // V3：高光从“ diffuse 的雾”改成“细而亮的边”。
-                        // iOS 的玻璃边缘是一条很细、很亮的线，不是糊开的一团。
-                        // blurRadius 7dp -> 3dp，falloff 1.35 -> 0.85，线会收紧、变亮。
+                        // V4.9：falloff 0.85 -> 0.70，高光线再收紧、变亮。
                         Highlight(
                             width = 1.6.dp,
                             blurRadius = 3.dp,
                             alpha = 1f,
-                            style = HighlightStyle.Default(intensity = 1f, angle = 90f, falloff = 0.85f)
+                            style = HighlightStyle.Default(intensity = 1f, angle = 90f, falloff = 0.70f)
                         )
                     }
                 } else null,
