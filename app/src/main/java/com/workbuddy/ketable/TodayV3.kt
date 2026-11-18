@@ -5,6 +5,14 @@ package com.workbuddy.ketable
  * 今日页 · Liquid Glass 视觉改造 v1
  * 依据:today.html 的逐像素定稿,设计数值一律保持原样,不许"优化"。
  *
+ * V4 浅色重构 (2026-11-18,用户定方向:浅色果味,像 iOS 26 默认那样):
+ *  V3 深色版在真机上看着像"黑底贴灰板",用户要求整体重构。
+ *  本轮只改视觉层,不动数据/逻辑/玻璃引擎:背景换成彩色柔光极光
+ *  (玻璃终于有颜色可折了),卡片换成透白,文字换成 iOS 浅色字梯,
+ *  Dock/灵动岛/FAB 跟着浅色走。旧设计宪法"背景永远中性"一条,
+ *  在今日页被这次重构明确废止,见 Theme.kt 注释。
+ * ═══════════════════════════════════════════════════════════════
+ *
  * 相对设计稿源码,本文件只做了「接入本工程」的适配:
  *   1. Course 字段换成工程的模型(location / startSection..endSection / color: String)
  *   2. 周胶囊不再套 GlassCard:本页运行在 BackdropHost 录制层内,
@@ -49,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -75,24 +84,28 @@ private val DOW_CN = arrayOf("周一", "周二", "周三", "周四", "周五", "
 /** 灵动岛占位高度：胶囊 8dp 上边距 + 38dp 本体 + 6dp 间隙 */
 val ISLAND_BAND = 52.dp
 
-/** ── 设计 Tokens（v3 定稿值，全页禁止散落硬编码） ─────────────── */
+/** ── 设计 Tokens（v4 浅色果味定稿值，全页禁止散落硬编码） ───────
+ * V4:底不再是纯黑,是极淡的薰衣草灰;卡片是透白(85-90%),让底下的
+ * 极光微微透出来;文字是 iOS 浅色字梯(主 #000000 / 次 #3C3C43)。
+ * 彩色只在背景极光、课程色条、进度环里出现,绝不大面积铺色。 */
 object V3 {
-    val Bg = Color(0xFF000000)
-    val Card = Color(0xFF1C1C1E)
-    val Card2 = Color(0xFF2C2C2E)
-    val CardActive = Color(0xFF3A3A3C)
-    val Sep = Color(0x17FFFFFF)            // rgba(255,255,255,.09)
-    val T1 = Color(0xFFF5F5F7).copy(alpha = .95f)
-    val T2 = Color(0xFFEBEBF5).copy(alpha = .62f)
-    val T3 = Color(0xFFEBEBF5).copy(alpha = .42f)
+    val Bg = Color(0xFFF5F4FA)
+    val Card = Color(0xD9FFFFFF)          // 分组列表:85% 白
+    val Hero = Color(0xE8FFFFFF)          // Hero 卡:91% 白
+    val Card2 = Color(0xCCFFFFFF)         // 入口胶囊:80% 白
+    val CardActive = Color(0xFFF2F2F7)
+    val Sep = Color(0x14000000)           // rgba(0,0,0,.08)
+    val T1 = Color(0xE0000000)            // 主文字
+    val T2 = Color(0x993C3C43)            // 次文字
+    val T3 = Color(0x663C3C43)            // 辅文字
     val Accent = Color(0xFFBF5AF2)
     val Accent2 = Color(0xFFE0A6FF)
     // iOS 系统课程色板
     val Blue = Color(0xFF0A84FF); val Green = Color(0xFF30D158)
     val Orange = Color(0xFFFF9F0A); val Pink = Color(0xFFFF375F)
     val Purple = Color(0xFFBF5AF2); val Teal = Color(0xFF40C8E0)
-    const val PAGE_HPAD = 16
-    val RHero = 24.dp; val RGroup = 16.dp; val RChip = 15.dp; val RIsland = 22.dp
+    const val PAGE_HPAD = 20
+    val RHero = 28.dp; val RGroup = 20.dp; val RChip = 16.dp; val RIsland = 22.dp
     /** 数字等宽（对应 CSS font-variant-numeric: tabular-nums） */
     val NumStyle = TextStyle(fontFeatureSettings = "tnum")
 }
@@ -109,36 +122,47 @@ private fun rowMeta(c: Course): String = buildList {
     if (c.teacher.isNotBlank()) add(c.teacher)
 }.distinct().joinToString(" · ")
 
-/** 中性背景（V3 对设计宪法第二条的例外：玻璃需要“信号”）。
+/** 极光背景（V4：玻璃需要“信号”，信号直接做进背景里）。
  *
- * 之前是纯黑 + 几乎看不见的暗角，玻璃下面什么都没有，
- * 折射折了个寂寞 —— 模糊黑还是黑，色散也看不出来。
- * V3 在顶部加一团 8% 的紫、底部加一团 6% 的青，肉眼看还是黑底，
- * 但玻璃边缘滑过时能拽出一点点颜色，这才是 iOS 液态玻璃的来源。
- * 如果以后觉得太花，把 0x14 / 0x0F 这两个透明度调小就行，别直接删掉。
- */
+ * V3 的 8% 紫 + 6% 青在纯黑上根本看不见，玻璃折了个寂寞。
+ * V4 换成 iOS 26 壁纸式的彩色柔光：极淡的薰衣草灰打底，右上薰衣草紫、
+ * 左中天空蓝、右下薄荷绿、左下蜜桃粉，四团柔光叠在一起。
+ * 颜色看着明显，但都是浅粉彩，不抢内容；Dock / 灵动岛 / FAB
+ * 从它上面滑过时，终于有颜色可以折射和模糊了。
+ * 如果以后觉得太花，把每团颜色的 alpha 往下调，别直接删掉。 */
 @Composable
 fun NeutralBackground(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().background(V3.Bg).drawBehind {
+        // 右上：薰衣草紫
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0x147C5CFF), Color.Transparent),
-                center = Offset(size.width * .85f, size.height * -.05f),
-                radius = size.width * 1.1f
+                colors = listOf(Color(0xFFDCD4FF), Color.Transparent),
+                center = Offset(size.width * .88f, size.height * -.06f),
+                radius = size.width * 1.05f
             )
         )
+        // 左中：天空蓝
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0x0F40C8E0), Color.Transparent),
-                center = Offset(size.width * .05f, size.height * 1.05f),
+                colors = listOf(Color(0xFFBFE0FF), Color.Transparent),
+                center = Offset(size.width * -.02f, size.height * .38f),
+                radius = size.width * 0.95f
+            )
+        )
+        // 右下：薄荷绿
+        drawRect(
+            brush = Brush.radialGradient(
+                colors = listOf(Color(0xFFC2F0DC), Color.Transparent),
+                center = Offset(size.width * .95f, size.height * .92f),
                 radius = size.width * 0.9f
             )
         )
+        // 左下：蜜桃粉
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0x1410142A), Color.Transparent),
-                center = Offset(size.width * .85f, size.height * -.05f),
-                radius = size.width * 1.1f
+                colors = listOf(Color(0xFFFFDCC8), Color.Transparent),
+                center = Offset(size.width * .02f, size.height * 1.02f),
+                radius = size.width * 0.85f
             )
         )
     })
@@ -216,12 +240,12 @@ private fun BigTitleHeader(today: LocalDate, weekNo: Int) {
 
 @Composable
 private fun WeekChip(weekNo: Int) {
-    // 本页在 BackdropHost 录制层内，真玻璃会自采样 → 用 10% 白蒙层等效（设计稿的内层底色）
+    // V4：透白胶囊，落在极光背景上
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0x1AFFFFFF))
+            .background(Color(0xA6FFFFFF))
             .padding(horizontal = 13.dp, vertical = 7.dp)
     ) {
         Box(
@@ -266,28 +290,28 @@ private fun HeroCard(next: Pair<LocalDateTime, Course>?, now: LocalDateTime) {
     Box(
         Modifier
             .fillMaxWidth()
+            .shadow(12.dp, RoundedCornerShape(V3.RHero))
             .clip(RoundedCornerShape(V3.RHero))
-            // 课程 Hero 是内容卡，不伪装成玻璃：使用中性深色表面，
-            // 只保留极弱的环境反射与细边缘光，把真正的液态玻璃留给 Dock / FAB。
-            .background(Color(0xFF202126))
+            // V4：Hero 是透白内容卡，不伪装成玻璃：91% 白 + 柔和投影，
+            // 上沿留一道细高光。真正的液态玻璃只留给 Dock / FAB / 灵动岛。
+            .background(V3.Hero)
             .drawBehind {
                 drawRect(
                     Brush.verticalGradient(
-                        0f to Color(0x16FFFFFF),
-                        0.12f to Color(0x07FFFFFF),
-                        0.55f to Color.Transparent,
-                        1f to Color(0x08000000)
+                        0f to Color(0xFFFFFFFF),
+                        0.18f to Color.Transparent,
+                        1f to Color(0x05000000)
                     )
                 )
                 drawRect(
                     Brush.radialGradient(
-                        listOf(Color(0x0FFFFFFF), Color.Transparent),
+                        listOf(Color(0x80FFFFFF), Color.Transparent),
                         center = Offset(size.width * .92f, 0f),
                         radius = size.width * .72f
                     )
                 )
                 drawLine(
-                    color = Color(0x24FFFFFF),
+                    color = Color(0xB3FFFFFF),
                     start = Offset(22.dp.toPx(), 0.6f),
                     end = Offset(size.width - 22.dp.toPx(), 0.6f),
                     strokeWidth = 1.dp.toPx()
@@ -299,16 +323,16 @@ private fun HeroCard(next: Pair<LocalDateTime, Course>?, now: LocalDateTime) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     statusText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    color = Color.White, letterSpacing = .1.sp,
+                    color = V3.Accent, letterSpacing = .1.sp,
                     modifier = Modifier.weight(1f)
                 )
                 if (whenText != null) {
                     Text(
                         whenText, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = .85f),
+                        color = V3.Accent,
                         modifier = Modifier
                             .clip(RoundedCornerShape(11.dp))
-                            .background(Color(0x33FFFFFF))
+                            .background(V3.Accent.copy(alpha = .12f))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
@@ -320,21 +344,21 @@ private fun HeroCard(next: Pair<LocalDateTime, Course>?, now: LocalDateTime) {
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         "$hours", fontSize = 48.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = (-2).sp, color = Color.White,
+                        letterSpacing = (-2).sp, color = V3.T1,
                         style = V3.NumStyle, lineHeight = 44.sp
                     )
                     Text(
                         " 小时 ", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = .72f)
+                        color = V3.T2
                     )
                     Text(
                         "$minutes", fontSize = 48.sp, fontWeight = FontWeight.Bold,
-                        letterSpacing = (-2).sp, color = Color.White,
+                        letterSpacing = (-2).sp, color = V3.T1,
                         style = V3.NumStyle, lineHeight = 44.sp
                     )
                     Text(
                         " 分", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
-                        color = Color.White.copy(alpha = .72f)
+                        color = V3.T2
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -342,11 +366,11 @@ private fun HeroCard(next: Pair<LocalDateTime, Course>?, now: LocalDateTime) {
             }
             Text(
                 courseName, fontSize = 17.5.sp, fontWeight = FontWeight.SemiBold,
-                color = Color.White, letterSpacing = (-0.2).sp,
+                color = V3.T1, letterSpacing = (-0.2).sp,
                 modifier = Modifier.padding(top = 16.dp)
             )
             Text(
-                meta, fontSize = 14.5.sp, color = Color.White.copy(alpha = .72f),
+                meta, fontSize = 14.5.sp, color = V3.T2,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 6.dp)
             )
@@ -401,7 +425,7 @@ private fun RingProgress(fraction: Float, modifier: Modifier = Modifier) {
         }
         // 底轨（未走部分）
         drawArc(
-            color = Color.White.copy(alpha = .20f),
+            color = Color.Black.copy(alpha = .10f),
             startAngle = -90f + sweep, sweepAngle = 360f - sweep, useCenter = false,
             topLeft = tl, size = arc, style = Stroke(stroke, cap = StrokeCap.Round)
         )
@@ -419,9 +443,9 @@ private fun RingWithLabel(fraction: Float, modifier: Modifier = Modifier) {
         ) {
             Text(
                 "${(fraction * 100).toInt()}%", fontSize = 20.sp,
-                fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, color = Color.White
+                fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp, color = V3.T1
             )
-            Text("今日", fontSize = 9.5.sp, color = Color.White.copy(alpha = .68f), letterSpacing = .4.sp)
+            Text("今日", fontSize = 9.5.sp, color = V3.T2, letterSpacing = .4.sp)
         }
     }
 }
@@ -435,7 +459,7 @@ private fun TrackBar(fraction: Float, modifier: Modifier = Modifier) {
                 .weight(fraction.coerceAtLeast(0.02f))
                 .fillMaxSize()
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = .26f))
+                .background(Color.Black.copy(alpha = .10f))
         )
         Box(
             Modifier
@@ -556,13 +580,13 @@ fun IslandBar(next: Pair<LocalDateTime, Course>?, now: LocalDateTime, modifier: 
         ) { V3Icon(V3IconKind.Clock, Modifier.size(12.dp), Color.White) }
         Spacer(Modifier.width(9.dp))
         Text(
-            next.second.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+            next.second.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = V3.T1,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 150.dp)
         )
         Spacer(Modifier.width(9.dp))
         Box(
             Modifier.width(38.dp).height(3.dp).clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = .16f))
+                .background(Color.Black.copy(alpha = .12f))
         ) {
             Box(
                 Modifier.fillMaxWidth(frac).fillMaxSize().clip(RoundedCornerShape(2.dp))
@@ -571,7 +595,7 @@ fun IslandBar(next: Pair<LocalDateTime, Course>?, now: LocalDateTime, modifier: 
         }
         Spacer(Modifier.width(9.dp))
         Text(
-            "$left 分钟", fontSize = 12.sp, color = Color.White.copy(alpha = .6f),
+            "$left 分钟", fontSize = 12.sp, color = V3.T2,
             style = V3.NumStyle
         )
     }
