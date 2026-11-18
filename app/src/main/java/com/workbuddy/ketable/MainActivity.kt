@@ -279,15 +279,14 @@ fun AppScaffold(
         CrashGuard.clearProbe()
     }
 
-    // V4 浅色重构（2026-11-18，用户定方向：浅色果味）：
-    // 今日 tab 强制走浅色，配彩色柔光极光背景 + 透白卡片 + 浅色玻璃 Dock。
-    // 其他 tab 仍跟随系统/设置里的主题。状态栏图标在今日页用深色。
-    val pageColors = if (route == Route.Today) LightColors else colors
+    // V4.14 统一（2026-11-18）：所有 tab 都跟随系统/设置里的主题，不再
+    // 今日强制浅色；极光背景深浅两色都有，切 tab 不再明暗跳变。
+    // 状态栏图标也全跟着主题走。
     val rootView = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val act = rootView.context as? android.app.Activity
         if (act != null) {
-            val lightIcons = route == Route.Today || !dark
+            val lightIcons = !dark
             androidx.core.view.WindowCompat.getInsetsController(act.window, rootView).apply {
                 isAppearanceLightStatusBars = lightIcons
                 isAppearanceLightNavigationBars = lightIcons
@@ -298,12 +297,14 @@ fun AppScaffold(
     CompositionLocalProvider(
         LocalBackdrop provides backdrop,
         LocalGlassLevel provides DataStore.settings.glassLevel,
-        LocalKtColors provides pageColors
+        LocalKtColors provides colors
     ) {
     Box(Modifier.fillMaxSize()) {
         BackdropHost(backdrop) {
-            // 今日 tab 用 v3 的中性底（纯黑 + 极淡暗角）；其余页仍是纯色底
-            if (route == Route.Today) NeutralBackground() else AppBackground(colors)
+            // V4.14：5 个 tab 都用极光背景（深浅两色）；二级页仍锁纯色，
+            // 避免列表在玻璃下过于花。
+            val isTab = TABS.any { it.first == route }
+            if (isTab) NeutralBackground(dark) else AppBackground(colors)
             // 页面本体（会被录进 backdrop layer，玻璃采样它 → 滚动从玻璃下穿过）
             Box(Modifier.fillMaxSize()) {
                 when (val r = route) {
