@@ -251,9 +251,9 @@ fun GlassSurface(
                 effects = effects,
                 highlight = if (tier == GlassTier.Lens) {
                     {
-                        // V4.9：falloff 0.85 -> 0.70，高光线再收紧、变亮。
+                        // V5：高光带再加宽一点（1.6 -> 2.0dp），透镜边缘的亮边更明显。
                         Highlight(
-                            width = 1.6.dp,
+                            width = 2.0.dp,
                             blurRadius = 3.dp,
                             alpha = 1f,
                             style = HighlightStyle.Default(intensity = 1f, angle = 90f, falloff = 0.70f)
@@ -427,16 +427,25 @@ fun Modifier.innerTopHighlight(corner: Dp = 24.dp): Modifier {
  * Dock 选中态「玻璃泡」：Lens 级。
  * 完整等级 = 折射 + 色散 + 顶部高光；基础等级 = 放大 + 模糊 + 色散描边。
  * 参数集中在这里，调手感只改这一处。
+ *
+ * V5（2026-11-18，照小米/WeKiHome 参考图大改）：
+ * 泡泡从 64x52 的小胶囊改成 92x76 的巨型透镜，顶出 Dock 一截；
+ * 放大倍率 1.07 -> 1.30；选中的图标和文字不再画在泡泡上面，
+ * 而是画进泡泡里面放大显示（图标 28dp / 字 13sp），这样透镜里
+ * 的内容才是放大的——之前图标盖在泡泡上，泡泡底下只有白底栏，
+ * 什么都折不到，看着就是个白药片。
  */
 @Composable
 fun DockGlassBubble(
     modifier: Modifier = Modifier,
-    shape: Shape = androidx.compose.foundation.shape.CircleShape
+    shape: Shape = androidx.compose.foundation.shape.CircleShape,
+    content: @Composable BoxScope.() -> Unit = {}
 ) {
     GlassSurface(
         tier = GlassTier.Lens,
         shape = shape,
-        magnification = 1.07f,
-        modifier = modifier
-    ) {}
+        magnification = 1.30f,
+        modifier = modifier,
+        content = content
+    )
 }
