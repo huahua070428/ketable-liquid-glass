@@ -15,8 +15,8 @@ android {
         applicationId = "com.workbuddy.ketable"
         minSdk = 33
         targetSdk = 35
-        versionCode = 551
-        versionName = "5.4.11test"
+        versionCode = 552
+        versionName = "5.4.12test"
     }
 
     // 正式签名：GitHub Actions 用 Secrets 里的 KEYSTORE_BASE64 解出 keystore 再签，
