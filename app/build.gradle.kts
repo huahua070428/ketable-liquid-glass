@@ -12,8 +12,8 @@ android {
         applicationId = "com.workbuddy.ketable"
         minSdk = 33
         targetSdk = 35
-        versionCode = 550
-        versionName = "5.4.10test"
+        versionCode = 551
+        versionName = "5.4.11test"
     }
 
     // 正式签名：GitHub Actions 用 Secrets 里的 KEYSTORE_BASE64 解出 keystore 再签，
@@ -94,6 +94,10 @@ dependencies {
 
     // 液态玻璃：GraphicsLayer 实时采样背景 + AGSL 折射（真扭曲背后的内容）
     implementation("com.github.Kyant0:AndroidLiquidGlass:1.0.0-rc01")
+    // V6 试验（2026-11-18）：PrismalAGSL 1.0.7——Dock 水滴 + FAB 改用它，
+    // 水滴采样「页面背景 + 底栏本身（含图标）」，图标真的会被透镜折弯。
+    // 其他玻璃（灵动岛/页头）仍走 Kyant，验证通过前不拆旧链路。
+    implementation("com.github.styropyr0:PrismalAGSL:Prismal:1.0.7")
 
     // 仅本地验收用：JVM 里软件渲染 Compose 截图(沙箱无 KVM,跑不了模拟器)
     testImplementation("junit:junit:4.13.2")
