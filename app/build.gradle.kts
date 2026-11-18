@@ -15,8 +15,8 @@ android {
         applicationId = "com.workbuddy.ketable"
         minSdk = 33
         targetSdk = 35
-        versionCode = 552
-        versionName = "5.4.12test"
+        versionCode = 553
+        versionName = "5.4.13test"
     }
 
     // 正式签名：GitHub Actions 用 Secrets 里的 KEYSTORE_BASE64 解出 keystore 再签，
@@ -105,7 +105,10 @@ dependencies {
     // Gradle 会把 "Prismal" 当成版本号去找，run #19 第二次尝试就是这么失败的。
     // 已用 JitPack 上实际发布的 POM 核对过：groupId=com.github.styropyr0，
     // artifactId=PrismalAGSL，version=1.0.7。
-    implementation("com.github.styropyr0:PrismalAGSL:1.0.7")
+    // 5.4.13test 二分（2026-11-18）：先把这行依赖去掉验证闪退嫌疑——
+    // 它的 POM 要求 compose-bom 2026.06.01，会悄悄把整套 Compose 升上去，
+    // 怀疑 5.4.11/5.4.12test 的闪退就是这套库升上去导致的。
+    // implementation("com.github.styropyr0:PrismalAGSL:1.0.7")
 
     // 仅本地验收用：JVM 里软件渲染 Compose 截图(沙箱无 KVM,跑不了模拟器)
     testImplementation("junit:junit:4.13.2")
