@@ -131,12 +131,16 @@ private fun rowMeta(c: Course): String = buildList {
  * 从它上面滑过时，终于有颜色可以折射和模糊了。
  * 如果以后觉得太花，把每团颜色的 alpha 往下调，别直接删掉。 */
 @Composable
-fun NeutralBackground(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize().background(V3.Bg).drawBehind {
+fun NeutralBackground(dark: Boolean, modifier: Modifier = Modifier) {
+    // V4.14：极光推广到全部 tab，深浅两色统一。深色用同一套颜色压暗
+    // （黑底上柔光），玻璃在深色下也有颜色可折；浅色保持 V4 的粉彩。
+    val base = if (dark) Color(0xFF000000) else V3.Bg
+    val dim = if (dark) 0.45f else 1f
+    Box(modifier.fillMaxSize().background(base).drawBehind {
         // 右上：薰衣草紫（V4.9：颜色再加深一点，玻璃有更多颜色可折）
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFD2C6FF), Color.Transparent),
+                colors = listOf(Color(0xFFD2C6FF).copy(alpha = dim), Color.Transparent),
                 center = Offset(size.width * .88f, size.height * -.06f),
                 radius = size.width * 1.05f
             )
@@ -144,7 +148,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 左中：天空蓝
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFAED7FF), Color.Transparent),
+                colors = listOf(Color(0xFFAED7FF).copy(alpha = dim), Color.Transparent),
                 center = Offset(size.width * -.02f, size.height * .38f),
                 radius = size.width * 0.95f
             )
@@ -152,7 +156,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 右下：薄荷绿
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFB0EBD2), Color.Transparent),
+                colors = listOf(Color(0xFFB0EBD2).copy(alpha = dim), Color.Transparent),
                 center = Offset(size.width * .95f, size.height * .92f),
                 radius = size.width * 0.9f
             )
@@ -160,7 +164,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 左下：蜜桃粉
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFFFCBB2), Color.Transparent),
+                colors = listOf(Color(0xFFFFCBB2).copy(alpha = dim), Color.Transparent),
                 center = Offset(size.width * .02f, size.height * 1.02f),
                 radius = size.width * 0.85f
             )
