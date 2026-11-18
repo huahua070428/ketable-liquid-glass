@@ -616,7 +616,7 @@ private fun RowScope.PrismalTabItem(
     onClick: () -> Unit
 ) {
     val colors = LocalKtColors.current
-    val highlighted = LocalPrismalBottomTabHighlightedIndex.current()()
+    val highlighted = LocalPrismalBottomTabHighlightedIndex.current()
     val selected = highlighted == index
     PrismalGlassBottomTab(onClick = onClick) {
         Icon(
