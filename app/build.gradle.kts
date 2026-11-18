@@ -97,7 +97,12 @@ dependencies {
     // V6 试验（2026-11-18）：PrismalAGSL 1.0.7——Dock 水滴 + FAB 改用它，
     // 水滴采样「页面背景 + 底栏本身（含图标）」，图标真的会被透镜折弯。
     // 其他玻璃（灵动岛/页头）仍走 Kyant，验证通过前不拆旧链路。
-    implementation("com.github.styropyr0:PrismalAGSL:Prismal:1.0.7")
+    // 注意：坐标必须是三段式 com.github.styropyr0:PrismalAGSL:1.0.7。
+    // README 写的四段式 com.github.styropyr0:PrismalAGSL:Prismal:1.0.7 是错的——
+    // Gradle 会把 "Prismal" 当成版本号去找，run #19 第二次尝试就是这么失败的。
+    // 已用 JitPack 上实际发布的 POM 核对过：groupId=com.github.styropyr0，
+    // artifactId=PrismalAGSL，version=1.0.7。
+    implementation("com.github.styropyr0:PrismalAGSL:1.0.7")
 
     // 仅本地验收用：JVM 里软件渲染 Compose 截图(沙箱无 KVM,跑不了模拟器)
     testImplementation("junit:junit:4.13.2")
