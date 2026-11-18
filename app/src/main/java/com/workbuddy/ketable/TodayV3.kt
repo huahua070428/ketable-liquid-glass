@@ -133,10 +133,10 @@ private fun rowMeta(c: Course): String = buildList {
 @Composable
 fun NeutralBackground(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize().background(V3.Bg).drawBehind {
-        // 右上：薰衣草紫
+        // 右上：薰衣草紫（V4.9：颜色再加深一点，玻璃有更多颜色可折）
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFDCD4FF), Color.Transparent),
+                colors = listOf(Color(0xFFD2C6FF), Color.Transparent),
                 center = Offset(size.width * .88f, size.height * -.06f),
                 radius = size.width * 1.05f
             )
@@ -144,7 +144,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 左中：天空蓝
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFBFE0FF), Color.Transparent),
+                colors = listOf(Color(0xFFAED7FF), Color.Transparent),
                 center = Offset(size.width * -.02f, size.height * .38f),
                 radius = size.width * 0.95f
             )
@@ -152,7 +152,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 右下：薄荷绿
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFC2F0DC), Color.Transparent),
+                colors = listOf(Color(0xFFB0EBD2), Color.Transparent),
                 center = Offset(size.width * .95f, size.height * .92f),
                 radius = size.width * 0.9f
             )
@@ -160,7 +160,7 @@ fun NeutralBackground(modifier: Modifier = Modifier) {
         // 左下：蜜桃粉
         drawRect(
             brush = Brush.radialGradient(
-                colors = listOf(Color(0xFFFFDCC8), Color.Transparent),
+                colors = listOf(Color(0xFFFFCBB2), Color.Transparent),
                 center = Offset(size.width * .02f, size.height * 1.02f),
                 radius = size.width * 0.85f
             )
@@ -290,7 +290,7 @@ private fun HeroCard(next: Pair<LocalDateTime, Course>?, now: LocalDateTime) {
     Box(
         Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(V3.RHero))
+            .shadow(16.dp, RoundedCornerShape(V3.RHero))
             .clip(RoundedCornerShape(V3.RHero))
             // V4：Hero 是透白内容卡，不伪装成玻璃：91% 白 + 柔和投影，
             // 上沿留一道细高光。真正的液态玻璃只留给 Dock / FAB / 灵动岛。
