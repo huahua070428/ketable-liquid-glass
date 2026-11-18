@@ -12,8 +12,8 @@ android {
         applicationId = "com.workbuddy.ketable"
         minSdk = 33
         targetSdk = 35
-        versionCode = 541
-        versionName = "5.4.1-test"
+        versionCode = 546
+        versionName = "5.4.6test"
     }
 
     buildTypes {
