@@ -184,7 +184,9 @@ fun GlassSurface(
     val tintColor = tint ?: if (tier == GlassTier.Lens) {
         // V3：Lens 蒙层从 0.28 降到 0.16。之前蒙层太厚，直接把折射盖住了，
         // 玻璃泡看起来就是一块实色圆片。
-        if (colors.dark) colors.dockTint.copy(alpha = 0.16f) else colors.dockTint.copy(alpha = 0.20f)
+        // V4.14：浅色 Lens 蒙层再减薄（0.20 -> 0.12），白雾更少，
+        // 后面极光的颜色能透进来被折；深色保持 0.16。
+        if (colors.dark) colors.dockTint.copy(alpha = 0.16f) else colors.dockTint.copy(alpha = 0.12f)
     } else {
         colors.glassTint
     }
@@ -194,15 +196,16 @@ fun GlassSurface(
             when {
                 // 完整：AGSL 折射 + 深度 + 色散（最挑 GPU，等级掉到 1 就不用它）
                 tier == GlassTier.Lens && level >= 2 -> {
-                    // V4.9：折射再加深加宽（34/46 -> 38/56），边缘弯曲要更明显。
+                    // V4.14：折射再加深加宽（38/56 -> 44/72），边缘弯曲更明显；
+                    // 色散是布尔开关，弯得越狠，边缘的彩色散边越看得见。
                     blur(16.dp.toPx())
                     lens(
-                        refractionHeight = 38.dp.toPx(),
-                        refractionAmount = 56.dp.toPx(),
+                        refractionHeight = 44.dp.toPx(),
+                        refractionAmount = 72.dp.toPx(),
                         depthEffect = true,
                         chromaticAberration = true
                     )
-                    colorControls(saturation = 1.18f, brightness = if (colors.dark) 0.03f else 0.02f)
+                    colorControls(saturation = 1.30f, brightness = if (colors.dark) 0.03f else 0.02f)
                 }
                 // 基础：只模糊。Lens 靠「放大 + 高光 + 边缘色散描边」冒充折射
                 tier == GlassTier.Lens -> {
@@ -251,12 +254,13 @@ fun GlassSurface(
                 effects = effects,
                 highlight = if (tier == GlassTier.Lens) {
                     {
-                        // V5：高光带再加宽一点（1.6 -> 2.0dp），透镜边缘的亮边更明显。
+                        // V4.14：高光带再加宽收紧（2.0 -> 2.5dp，falloff 0.70 -> 0.60），
+                        // 透镜边缘的亮边更亮更利。
                         Highlight(
-                            width = 2.0.dp,
+                            width = 2.5.dp,
                             blurRadius = 3.dp,
                             alpha = 1f,
-                            style = HighlightStyle.Default(intensity = 1f, angle = 90f, falloff = 0.70f)
+                            style = HighlightStyle.Default(intensity = 1f, angle = 90f, falloff = 0.60f)
                         )
                     }
                 } else null,
