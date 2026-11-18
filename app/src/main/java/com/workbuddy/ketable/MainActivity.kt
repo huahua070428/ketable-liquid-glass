@@ -279,15 +279,15 @@ fun AppScaffold(
         CrashGuard.clearProbe()
     }
 
-    // 今日页 v3 是深色定稿（纯黑底 + 暗紫极光）：浅色主题下如果 Dock / FAB / 状态栏
-    // 还跟着浅色走，就会出现「黑页面 + 白玻璃条」的混搭。这里只把今日 tab 的
-    // chrome 锁到深色，色彩值一个没改。
-    val pageColors = if (route == Route.Today) DarkColors else colors
+    // V4 浅色重构（2026-11-18，用户定方向：浅色果味）：
+    // 今日 tab 强制走浅色，配彩色柔光极光背景 + 透白卡片 + 浅色玻璃 Dock。
+    // 其他 tab 仍跟随系统/设置里的主题。状态栏图标在今日页用深色。
+    val pageColors = if (route == Route.Today) LightColors else colors
     val rootView = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         val act = rootView.context as? android.app.Activity
         if (act != null) {
-            val lightIcons = route != Route.Today && !dark
+            val lightIcons = route == Route.Today || !dark
             androidx.core.view.WindowCompat.getInsetsController(act.window, rootView).apply {
                 isAppearanceLightStatusBars = lightIcons
                 isAppearanceLightNavigationBars = lightIcons
@@ -634,6 +634,7 @@ fun Dock(selected: Route, onSelect: (Route) -> Unit, modifier: Modifier = Modifi
 /** 悬浮按钮：Lens 级玻璃（每屏第 2 个 Lens，封顶） */
 @Composable
 private fun AddFab(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val colors = LocalKtColors.current
     GlassSurface(
         tier = GlassTier.Lens,
         shape = CircleShape,
@@ -644,7 +645,8 @@ private fun AddFab(modifier: Modifier = Modifier, onClick: () -> Unit) {
             Modifier.fillMaxSize().clickable { onClick() },
             contentAlignment = Alignment.Center
         ) {
-            Text("＋", fontSize = 25.sp, fontWeight = FontWeight.Medium, color = Color.White)
+            // V4：加号用当前主题的主文字色——浅色玻璃上白加号看不见
+            Text("＋", fontSize = 25.sp, fontWeight = FontWeight.Medium, color = colors.label)
         }
     }
 }
