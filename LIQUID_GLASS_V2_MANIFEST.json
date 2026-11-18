@@ -1,0 +1,15 @@
+{
+  "project": "ketable-native",
+  "version": "Liquid Glass Redesign V3",
+  "base": "ketable-native-v5.4.1test-src.zip",
+  "changed_files": [
+    "app/src/main/java/com/workbuddy/ketable/Glass.kt",
+    "app/src/main/java/com/workbuddy/ketable/TodayV3.kt",
+    "app/src/main/java/com/workbuddy/ketable/MainActivity.kt",
+    "app/src/main/java/com/workbuddy/ketable/Theme.kt",
+    "LIQUID_GLASS_V3.md"
+  ],
+  "apk_built": false,
+  "device_verified": false,
+  "note": "V3: parameter tuning only, no rewrite of GlassShaders/CrashGuard. No Android SDK in this environment, build on Workbuddy with ./gradlew assembleRelease and verify on a real device."
+}
