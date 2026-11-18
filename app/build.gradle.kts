@@ -1,6 +1,9 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // AGP 9.0 起 Kotlin 已内置（android.builtInKotlin 默认 true），
+    // 再显式应用 org.jetbrains.kotlin.android 会直接报错
+    // （run #25：The 'org.jetbrains.kotlin.android' plugin is no longer required）。
+    // Compose 编译器插件仍需显式应用，官方迁移指南只要求去掉 kotlin-android。
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
