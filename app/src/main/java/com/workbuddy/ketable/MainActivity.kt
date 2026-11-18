@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -66,6 +68,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.styropyr0.prismal.PrismalBackdrop
+import com.styropyr0.prismal.components.LocalPrismalBottomTabHighlightedIndex
+import com.styropyr0.prismal.components.PrismalGlassBottomTab
+import com.styropyr0.prismal.components.PrismalGlassBottomTabs
+import com.styropyr0.prismal.components.PrismalGlassButton
+import com.styropyr0.prismal.shapes.PrismalCapsule
+import com.styropyr0.prismal.sources.prismalGlassLayer
+import com.styropyr0.prismal.sources.rememberPrismalGlassLayer
 import java.time.LocalDate
 
 /** 各页面共享的玻璃环境（旧引擎参数，保留字段避免旧页面编译中断） */
@@ -269,6 +279,10 @@ fun AppScaffold(
     val canGlass = GlassCapability.supported && glassOn && !GlassRuntime.broken
     val backdrop = if (canGlass) rememberLayerBackdrop() else null
 
+    // V6 试验（2026-11-18）：Prismal 玻璃采样源，和 Kyant 的 backdrop 录同一份页面内容，
+    // 只给 Dock 水滴和 FAB 用；其他玻璃仍走 Kyant，验证通过前不拆旧链路。
+    val prismalBackdrop = rememberPrismalGlassLayer()
+
     // 玻璃探针：开玻璃时立旗，稳定 10 秒才撤。若进程在这期间结束，
     // 下次启动能确定「是玻璃害的」，自动降一级（见 CrashGuard）。
     LaunchedEffect(canGlass, DataStore.settings.glassLevel) {
@@ -302,6 +316,9 @@ fun AppScaffold(
     ) {
     Box(Modifier.fillMaxSize()) {
         BackdropHost(backdrop) {
+            // V6：Prismal 层和 Kyant 的 BackdropHost 录同一份页面内容（背景 + 列表）。
+            // 玻璃在 BackdropHost 之外采样它，滚动从玻璃下穿过时两边都实时跟随。
+            Box(Modifier.fillMaxSize().prismalGlassLayer(prismalBackdrop)) {
             // 今日 tab 用 v3 的中性底（纯黑 + 极淡暗角）；其余页仍是纯色底
             if (route == Route.Today) NeutralBackground() else AppBackground(colors)
             // 页面本体（会被录进 backdrop layer，玻璃采样它 → 滚动从玻璃下穿过）
@@ -344,6 +361,7 @@ fun AppScaffold(
                     )
                 }
             }
+            } // V6：关 Prismal 层包装 Box
         }
 
         // 顶部玻璃栏（在 backdrop 之外 → 采样下面的滚动内容）
@@ -366,6 +384,7 @@ fun AppScaffold(
             Dock(
                 selected = route,
                 onSelect = ::go,
+                backdrop = prismalBackdrop,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -377,7 +396,8 @@ fun AppScaffold(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .navigationBarsPadding()
-                        .padding(end = 24.dp, bottom = 92.dp)
+                        .padding(end = 24.dp, bottom = 92.dp),
+                    backdrop = prismalBackdrop
                 ) { go(Route.Edit("new")) }
             }
         }
@@ -542,135 +562,103 @@ private fun HeaderRoundBtn(symbol: String, onClick: () -> Unit) {
 
 // ---------------------------------------------------------------- Dock
 
+/**
+ * V6 试验（2026-11-18）：Dock 改用 PrismalAGSL 的 PrismalGlassBottomTabs。
+ *
+ * 关键区别在架构：水滴的背景是「页面背景 + 底栏本身（含图标）」合并采样，
+ * 所以选中的图标真的会被透镜折弯、带色散——Kyant 是把图标画在玻璃上面，
+ * 这正是 V5 看着像白药片的根源。
+ *
+ * 诚实提醒：这个水滴是 iOS 风格的内嵌 pill，静止时只有柔和内阴影，
+ * 按压/拖动时才变大变锐；不是小米那种顶出底栏的巨型泡。
+ * 这一步先验证「图标被折弯 + 彩虹边」，巨型泡下一步再自定义着色器。
+ * 旧的 Kyant Dock 已移除；其他玻璃（灵动岛/页头）仍走 Kyant，验证通过前不拆旧链路。
+ */
 @Composable
-fun Dock(selected: Route, onSelect: (Route) -> Unit, modifier: Modifier = Modifier) {
+fun Dock(
+    selected: Route,
+    onSelect: (Route) -> Unit,
+    backdrop: PrismalBackdrop,
+    modifier: Modifier = Modifier
+) {
     val colors = LocalKtColors.current
     val idx = TABS.indexOfFirst { it.first == selected }.coerceAtLeast(0)
-
-    // 玻璃泡滑移：spring ≈ 300ms；切换瞬间轻微横向拉伸再回弹（morph）
-    val squash = remember { Animatable(0f) }
-    LaunchedEffect(idx) {
-        squash.snapTo(1f)
-        squash.animateTo(0f, spring(dampingRatio = 0.48f, stiffness = 320f))
-    }
-
-    // 注意层级：Dock 的玻璃长条是「背景层」，玻璃泡与图标是它的**兄弟**。
-    // 如果把 Lens 泡放进 Regular 长条里，等于在带模糊 effect 的图层里再去采样背景层，
-    // 是这整套里最重、最容易踩驱动的组合，拆开更稳（视觉上也更对：泡不该被长条糊掉）。
-    Box(modifier.height(DOCK_H.dp)) {
-        GlassSurface(
-            tier = GlassTier.Regular,
-            shape = RoundedCornerShape((DOCK_H / 2).dp),
-            tint = colors.dockTint,
-            modifier = Modifier.fillMaxSize()
-        ) {}
-
-        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-            val tabW: Dp = maxWidth / TABS.size
-            // V5：巨型透镜泡 92x76，顶出 Dock 10dp（参考图：泡泡比底栏高出一截）。
-            // 泡泡中心仍对准当前 tab 的槽位中心。
-            val bubbleW = 92.dp
-            val bubbleH = 76.dp
-            val target = (tabW * idx + (tabW - bubbleW) / 2).coerceIn(
-                0.dp, (maxWidth - bubbleW).coerceAtLeast(0.dp)
-            )
-            val x by animateDpAsState(
-                targetValue = target,
-                animationSpec = spring(dampingRatio = 0.78f, stiffness = 430f),
-                label = "dockBubble"
-            )
-
-            // 选中：凸透镜玻璃泡（唯一 Lens 级，每屏 1 个）。
-            // 选中的图标和文字画进泡泡里放大显示；Row 里对应的那一份用透明占位，
-            // 位置不变，只是看不见——这样透镜里放大的才是图标本身。
-            val (selLabel, selIcon) = TABS[idx].second
-            Box(
-                Modifier
-                    .offset(x = x, y = (-10).dp)
-                    .graphicsLayer {
-                        scaleX = 1f + 0.10f * squash.value
-                        scaleY = 1f - 0.05f * squash.value
-                    }
-            ) {
-                DockGlassBubble(
-                    modifier = Modifier.size(bubbleW, bubbleH),
-                    shape = RoundedCornerShape(30.dp)
-                ) {
-                    Column(
-                        Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            selIcon,
-                            contentDescription = selLabel,
-                            modifier = Modifier.size(28.dp),
-                            tint = colors.accent
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            selLabel,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.accent
-                        )
-                    }
-                }
-            }
-
-            Row(Modifier.fillMaxSize()) {
-                TABS.forEachIndexed { i, entry ->
-                    val (label, icon) = entry.second
-                    val on = i == idx
-                    Column(
-                        Modifier
-                            .width(tabW)
-                            .fillMaxSize()
-                            .graphicsLayer { alpha = if (on) 0f else 1f }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onSelect(entry.first) },
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            icon,
-                            contentDescription = label,
-                            modifier = Modifier.size(if (on) 21.dp else 20.dp),
-                            tint = if (on) colors.accent else colors.ink3
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            label,
-                            fontSize = 10.sp,
-                            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
-                            color = if (on) colors.accent else colors.ink3
-                        )
-                    }
-                }
-            }
+    PrismalGlassBottomTabs(
+        selectedTabIndex = { idx },
+        onTabSelected = { onSelect(TABS[it].first) },
+        backdrop = backdrop,
+        tabsCount = TABS.size,
+        tintDropletContent = false,
+        blurRadius = 12.dp,
+        refractionHeight = 20.dp,
+        refractionAmount = 36.dp,
+        dropletChromaticAberration = 0.8f,
+        dropletRefractionHeight = 24.dp,
+        dropletRefractionAmount = 32.dp,
+        dropletContentScaleX = 1f,
+        dropletContentScaleY = 1f,
+        renderWithLowOverhead = false,
+        modifier = modifier
+    ) {
+        TABS.forEachIndexed { i, entry ->
+            val (label, icon) = entry.second
+            PrismalTabItem(index = i, label = label, icon = icon) { onSelect(entry.first) }
         }
     }
 }
 
-/** 悬浮按钮：Lens 级玻璃（每屏第 2 个 Lens，封顶） */
+/** 底栏单项：图标 + 文字，选中态跟随水滴高亮（拖动时也跟）。 */
 @Composable
-private fun AddFab(modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun RowScope.PrismalTabItem(
+    index: Int,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     val colors = LocalKtColors.current
-    GlassSurface(
-        tier = GlassTier.Lens,
-        shape = CircleShape,
-        magnification = 1.22f,
+    val highlighted = LocalPrismalBottomTabHighlightedIndex.current()()
+    val selected = highlighted == index
+    PrismalGlassBottomTab(onClick = onClick) {
+        Icon(
+            icon,
+            contentDescription = label,
+            modifier = Modifier.size(if (selected) 21.dp else 20.dp),
+            tint = if (selected) colors.accent else colors.ink3
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            label,
+            fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = if (selected) colors.accent else colors.ink3
+        )
+    }
+}
+
+/**
+ * V6 试验：FAB 改用 PrismalGlassButton（圆形胶囊），色散 0.5，边缘折射加深。
+ * 旧的 Kyant Lens FAB 已移除。
+ */
+@Composable
+private fun AddFab(
+    modifier: Modifier = Modifier,
+    backdrop: PrismalBackdrop,
+    onClick: () -> Unit
+) {
+    val colors = LocalKtColors.current
+    PrismalGlassButton(
+        onClick = onClick,
+        backdrop = backdrop,
+        shape = { PrismalCapsule() },
+        height = null,
+        blurRadius = 8.dp,
+        refractionHeight = 20.dp,
+        refractionAmount = 36.dp,
+        chromaticAberration = 0.5f,
+        contentPadding = PaddingValues(0.dp),
         modifier = modifier.size(56.dp)
     ) {
-        Box(
-            Modifier.fillMaxSize().clickable { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            // V4：加号用当前主题的主文字色——浅色玻璃上白加号看不见
-            Text("＋", fontSize = 25.sp, fontWeight = FontWeight.Medium, color = colors.label)
-        }
+        Text("＋", fontSize = 25.sp, fontWeight = FontWeight.Medium, color = colors.label)
     }
 }
 
